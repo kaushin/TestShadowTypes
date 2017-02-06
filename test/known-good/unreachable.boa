@@ -1,0 +1,18 @@
+
+DEAD: output sum of int ;
+
+visit(input, visitor {
+	
+	before node: IfStatement ->{
+       visit(node.true_branch);
+       DEAD << 1 ;
+    }
+    before node: ForStatement ->{
+       visit(node.body);
+       DEAD << 1 ;
+    }
+    before node: Statement ->{
+       visit(node.condition);
+       DEAD << 1 ;
+    }
+});
