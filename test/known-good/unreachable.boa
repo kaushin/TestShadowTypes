@@ -1,6 +1,6 @@
 
 DEAD: output sum of int ;
-
+v : IfStatement;
 visit(input, visitor {
 	
 	before node: IfStatement ->{

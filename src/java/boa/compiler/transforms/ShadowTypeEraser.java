@@ -21,15 +21,23 @@ import java.util.*;
 
 import boa.compiler.visitors.AbstractVisitorNoArg;
 
+import boa.compiler.SymbolTable;
+
 import boa.compiler.ast.Factor;
 import boa.compiler.ast.Selector;
 import boa.compiler.ast.Term;
 import boa.compiler.ast.Node;
 import boa.compiler.ast.Component;
+import boa.compiler.ast.Identifier;
+
 import boa.compiler.ast.expressions.*;
 
-import boa.types.BoaShadowType;
+import boa.compiler.ast.statements.VarDeclStatement;
+import boa.compiler.ast.statements.Statement;
 
+import boa.types.BoaShadowType;
+import boa.types.proto.StatementProtoTuple;
+import boa.types.BoaTuple;
 /**
  * Converts a tree using shadow types into a tree without shadow types.
  *
@@ -38,13 +46,17 @@ import boa.types.BoaShadowType;
  */
 public class ShadowTypeEraser extends AbstractVisitorNoArg {
 
-	private ArrayList<String> shadowTypes ;
+	
+	private SymbolTable env;
 
+/*	private HashMap<String,BoaTuple> tupleMap = new HashMap<String,BoaTuple>(); 
+	private HashMap<String,String> tokenMap = new HashMap<String,String>(); 
+	
 	public ShadowTypeEraser(){
-		shadowTypes =  new ArrayList<String>(Arrays.asList("IfStatement","ForStatement"));
+		tokenMap.put("IfStatement","Statement");
+		tupleMap.put("Statement",new StatementProtoTuple());
 	}
-
-
+	*/		
 	@Override
 	public void visit(final Selector n) {
 		//System.out.println("Selector ID = "+ n.getId());
@@ -59,11 +71,29 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
 			n.getIdentifier().accept(this);
 		}
 		//System.out.println("Component Type = "+ n.getType().toString());
-		if(shadowTypes.contains(n.getType().toString())){
-			System.out.println(  "Shadow Type Found : " + n.getType() );
+		if(n.type instanceof BoaShadowType){
+			System.out.println("Shadow Type before/after Found : " + n.getType());
 		}
-
-
 		n.getType().accept(this);
+	}
+
+	@Override
+	public void visit(final VarDeclStatement n) {
+		super.visit(n);
+		//get Symbol Table
+		env = n.env;
+		if (n.hasType()){
+			if(n.type instanceof BoaShadowType){
+				//Change the Identifier in the ast
+				BoaShadowType typeUsed = (BoaShadowType)env.get(n.getType().toString());
+				Identifier temp = (Identifier)n.getType();
+				temp.setToken(typeUsed.getDeclarationIdentifierEraser());
+				System.out.println("Shadow Type Declaration Found = "+ temp.getToken());
+				
+				//Change the Type in the SymbolTable
+				env.setType(n.getId().getToken(),typeUsed.getDeclarationSymbolTableEraser());
+			}
+		}
+		
 	}
 }
