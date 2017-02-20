@@ -31,11 +31,15 @@ import boa.types.proto.StatementProtoTuple;
  */
 public class BoaShadowType extends BoaTuple {
 	private final Map<String, Node> codegen = new HashMap<String, Node>();
-
+	public String getDeclarationIdentifierEraser;
+	public BoaTuple getDeclarationSymbolTableEraser;
 	/**
 	 * Construct a {@link BoaShadowType}.
 	 */
-	public BoaShadowType() { }
+	public BoaShadowType() {
+		getDeclarationIdentifierEraser = "Statement";
+		getDeclarationSymbolTableEraser = new StatementProtoTuple();
+	}
 
 	public void addShadow(final String name, final BoaType t, final Node codegen) {
 		names.put(name, members.size());
@@ -46,12 +50,5 @@ public class BoaShadowType extends BoaTuple {
 	public Node lookupCodegen(final String name) {
 		return codegen.get(name);
 	}
-	//test code  
-	public String getDeclarationIdentifierEraser(){
-		return "Statement";
-	}
-	//test code
-	public BoaTuple getDeclarationSymbolTableEraser(){
-		return new StatementProtoTuple();
-	}
+	
 }

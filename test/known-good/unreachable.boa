@@ -7,12 +7,12 @@ visit(input, visitor {
        visit(node.true_branch);
        DEAD << 1 ;
     }
-    before node: ForStatement ->{
-       visit(node.body);
-       DEAD << 1 ;
-    }
+    #before node: ForStatement ->{
+  #     visit(node.body);
+    #   DEAD << 1 ;
+   # }
     before node: Statement ->{
        visit(node.condition);
-       DEAD << 1 ;
+      DEAD << 1 ;
     }
 });
