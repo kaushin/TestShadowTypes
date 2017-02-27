@@ -151,38 +151,28 @@ public class SymbolTable {
 		// TODO add shadow types
 		BoaShadowType shadow = new BoaShadowType();
 		shadow.addShadow("condition", new ExpressionProtoTuple(),
-			new Factor(
-				new Identifier("${0}")
-			).addOp(
-				new Selector(new Identifier("expressions"))
-			).addOp(
-				new Index(
-					new Expression(
-						new Conjunction(
-							new Comparison(
-								new SimpleExpr(
-									new Term(
-										new Factor(new IntegerLiteral("0"))
-									)
-								)
-							)
-						)
-					)
-				)
-			));
-		shadow.addShadow("true_branch", new ExpressionProtoTuple(),
-			new Factor(
-				new Identifier("${0}")
-			).addOp(
-				new Selector(new Identifier("expressions"))
-			).addOp(
-				new Index(
-					new Expression(
-						new Conjunction(
-							new Comparison(
-								new SimpleExpr(
-									new Term(
-										new Factor(new IntegerLiteral("0"))
+			new Expression(
+				new Conjunction(
+					new Comparison(
+						new SimpleExpr(
+							new Term(
+								new Factor(
+									new Identifier("${0}")
+								).addOp(
+									new Selector(new Identifier("expressions"))
+								).addOp(
+									new Index(
+										new Expression(
+											new Conjunction(
+												new Comparison(
+													new SimpleExpr(
+														new Term(
+															new Factor(new IntegerLiteral("0"))
+														)
+													)
+												)
+											)
+										)
 									)
 								)
 							)
@@ -193,6 +183,10 @@ public class SymbolTable {
 		//shadow.addShadow("true_branch", new StatementProtoTuple(), "${0}.statements[0]");
 		//shadow.addShadow("false_branch", new StatementProtoTuple(), "(len(${0}.statements) > 1 ? null : ${0}.statements[1])");
 		idmap.put("IfStatement", shadow);
+
+		//shadow = new BoaShadowType();
+		//shadow.addShadow("body", new StatementProtoTuple(), "s.statements[0]");
+		//idmap.put("ForStatement", shadow);
 
 		shadow = new BoaShadowType();
 			shadow.addShadow("body", new ExpressionProtoTuple(),

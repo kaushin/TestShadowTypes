@@ -29,7 +29,8 @@ import boa.compiler.ast.Term;
 import boa.compiler.ast.Node;
 import boa.compiler.ast.Component;
 import boa.compiler.ast.Identifier;
-
+import boa.compiler.ast.Conjunction;
+import boa.compiler.ast.Call;
 import boa.compiler.ast.expressions.*;
 
 import boa.compiler.ast.statements.VarDeclStatement;
@@ -49,12 +50,59 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
 	
 	private SymbolTable env;
 
-	@Override
-	public void visit(final Factor n) {
-		n.getOperand().accept(this);
-		for (final Node o : n.getOps())
-			o.accept(this);
+	private class Replace extends AbstractVisitorNoArg{
+		protected Expression result = null;
+		protected String CallingVariableName ;
+		protected Expression test = null;
+		protected void initialize() { 
+			
+		}
+
+		public Expression getExpression(){
+			CallingVariableName = null;
+			return result;
+		}
+
+		public void start(final Node n, String CallingVariableName) {
+			initialize();
+			this.CallingVariableName = CallingVariableName;
+			n.accept(this);
+			
+			
+		}
+
+
+		public void start(final Node n, Expression test) {
+			initialize();
+			this.test = test;
+			n.accept(this);
+		}
+
+		// public void visit(final Call n) {
+		// 	if(test != null){
+		// 		ArrayList<Expression> args = new ArrayList<Expression>();
+		// 		args.add(test);
+		// 		n.setArgs(args);
+		// 		System.out.println("Replaced Expression");
+		// 	}
+		// 	super.visit(n);
+		// }
+
+
+		public void visit(final Factor n) {
+			super.visit(n);
+			
+			if(n.getOperand() instanceof Identifier){
+				Identifier id = (Identifier)n.getOperand();
+				System.out.println("---->"+id.getToken() + " string: " + CallingVariableName);
+				if(id.getToken().equals("${0}")){
+					id.setToken(CallingVariableName);
+					result = (Expression)n.getParent().getParent().getParent().getParent().getParent();
+				}
+			}
+		}
 	}
+
 
 	@Override
 	public void visit(final Selector n) {
@@ -62,29 +110,47 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
 
 		env = n.env;
 		//Get Term node and replace its child(I was thinking this is where I need to replace the tree)
-		Term test =  (Term)n.getParent().getParent();
-		Identifier callingID = (Identifier)test.getLhs().getOperand();
-		if (env.get(callingID.getToken()) instanceof BoaShadowType){
-			System.out.println("Shadow Type Selector ID = "+ n.getId());
-			// Getting Shadow type used
-			BoaShadowType typeUsed = (BoaShadowType)env.get(callingID.getToken());
+		Factor test =  (Factor)n.getParent();
+		
 
-			// Im not so sure about this step to replace the tree.
-			Factor assign = (Factor)typeUsed.lookupCodegen(n.getId().getToken());
-			Identifier x = (Identifier)assign.getOperand();
-			// Setting the identifier in teh shadow type eraser tree
-			x.setToken(callingID.getToken());
-			//Setting the Factor child of teh term node to our tree
-			Factor assignTo = test.getLhs();
-			assignTo = assign;
-			//test =  (Term)n.getParent().getParent();
-			//assignTo = test.getLhs();
-			//x = (Identifier)assignTo.getOperand();
-			//System.out.println(x.getToken());
+		if ( test.getOperand().type instanceof BoaShadowType){
+			//get parent Expression or Call
+			Node temp = n;
+			Call c = null ;
+			//Is it possible for the call statement to have more than one expression in this case?
+			while(c == null ){
+				if(temp instanceof Call){
+					c = (Call)temp;
+					System.out.println(c.getArgsSize());
+				}else{
+					temp = temp.getParent();
+				}
+			}
+			
+			//c = c.addArg( new Expression());
+			Identifier id = (Identifier)test.getOperand();
+			// Getting Shadow type used
+			System.out.println(id.getToken());
+			BoaShadowType typeUsed = (BoaShadowType)env.get(id.getToken());	
+
+			Expression replacement = (Expression)typeUsed.lookupCodegen(n.getId().getToken()).clone();
+			//working through to all identifiers to all identitiers!!
+			Replace rep = new Replace();
+
+			rep.start(replacement,id.getToken());
+			replacement = rep.getExpression();//now replacement has all identifiers replaced
+			ArrayList<Expression> args = new ArrayList<Expression>();
+			//calling to replace children of call node
+			args.add(replacement);
+			c.setArgs(args);
+			
+			
+
 		}
+
 	}
 
-	
+
 	
 	@Override
 	public void visit(final Component n) {

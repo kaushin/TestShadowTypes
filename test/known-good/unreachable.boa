@@ -4,7 +4,7 @@ v : IfStatement;
 visit(input, visitor {
 	
 	before node: IfStatement ->{
-       visit(node.true_branch);
+       visit(node.condition);
        DEAD << 1 ;
     }
     #before node: ForStatement ->{
