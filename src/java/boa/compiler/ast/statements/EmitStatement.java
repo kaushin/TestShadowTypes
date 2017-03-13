@@ -25,6 +25,7 @@ import boa.compiler.visitors.AbstractVisitor;
 import boa.compiler.visitors.AbstractVisitorNoArg;
 import boa.compiler.visitors.AbstractVisitorNoReturn;
 
+import boa.compiler.ast.Node;
 /**
  * 
  * @author rdyer
@@ -115,6 +116,26 @@ public class EmitStatement extends Statement {
 	@Override
 	public void accept(final AbstractVisitorNoArg v) {
 		v.visit(this);
+	}
+
+	@Override
+	public void replaceExpression(final Expression oldExp, final Expression newExp) {
+		if (oldExp == value) {
+			newExp.setParent(this);
+			value = newExp;
+		}
+
+		if (oldExp == weight) {
+			newExp.setParent(this);
+			weight = newExp;
+		}
+
+		for (int i = 0; i < indices.size(); i++) {
+			if (oldExp == indices.get(i)) {
+				newExp.setParent(this);
+				indices.set(i, newExp);
+			}
+		}
 	}
 
 	public EmitStatement clone() {

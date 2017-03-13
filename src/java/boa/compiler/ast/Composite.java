@@ -110,6 +110,16 @@ public class Composite extends Operand {
 		v.visit(this);
 	}
 
+	@Override
+	public void replaceExpression(final Expression oldExp, final Expression newExp) {
+		for (int i = 0; i < exprs.size(); i++) {
+			if (oldExp == exprs.get(i)) {
+				newExp.setParent(this);
+				exprs.set(i, newExp);
+			}
+		}
+	}
+
 	public Composite clone() {
 		final Composite c = new Composite(empty);
 		for (final Expression e : exprs)

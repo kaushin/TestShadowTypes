@@ -88,12 +88,11 @@ public class Call extends Node {
 	}
 
 	@Override
-	public void replaceExpression(final Node oldExp,final Node newExp) {
-		newExp.setParent(this);
-		for(Expression exp : args){
-			if(oldExp == exp ){
-				exp = (Expression)newExp;
-				System.out.println("TEST");
+	public void replaceExpression(final Expression oldExp, final Expression newExp) {
+		for (int i = 0; i < args.size(); i++) {
+			if (oldExp == args.get(i)) {
+				newExp.setParent(this);
+				args.set(i, newExp);
 			}
 		}
 	}

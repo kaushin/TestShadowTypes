@@ -23,7 +23,7 @@ import boa.compiler.ast.Node;
 import boa.compiler.visitors.AbstractVisitor;
 import boa.compiler.visitors.AbstractVisitorNoArg;
 import boa.compiler.visitors.AbstractVisitorNoReturn;
-
+import boa.compiler.ast.statements.VisitStatement;
 /**
  * 
  * @author rdyer
@@ -107,6 +107,16 @@ public class Block extends Statement {
 		else {
 			newStmt.setParent(this);
 			statements.set(index, newStmt);
+		}
+	}
+
+
+	public void replaceVisit(VisitStatement oldVisit){
+		int index = 999;
+		for(int i = 0; i< statements.size(); i++){
+			if(oldVisit == statements.get(i)){
+				statements.remove(i);
+			}
 		}
 	}
 

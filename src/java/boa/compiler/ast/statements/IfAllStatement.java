@@ -84,6 +84,14 @@ public class IfAllStatement extends Statement {
 		v.visit(this);
 	}
 
+	@Override
+	public void replaceExpression(final Expression oldExp, final Expression newExp) {
+		if (oldExp == condition) {
+			newExp.setParent(this);
+			condition = newExp;
+		}
+	}
+
 	public IfAllStatement clone() {
 		final IfAllStatement s = new IfAllStatement(var.clone(), condition.clone(), body.clone());
 		copyFieldsTo(s);

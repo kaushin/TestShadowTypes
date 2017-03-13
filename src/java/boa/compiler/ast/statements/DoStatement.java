@@ -70,6 +70,14 @@ public class DoStatement extends Statement {
 		v.visit(this);
 	}
 
+	@Override
+	public void replaceExpression(final Expression oldExp, final Expression newExp) {
+		if (oldExp == condition) {
+			newExp.setParent(this);
+			condition = newExp;
+		}
+	}
+
 	public DoStatement clone() {
 		final DoStatement s = new DoStatement(condition.clone(), body.clone());
 		copyFieldsTo(s);

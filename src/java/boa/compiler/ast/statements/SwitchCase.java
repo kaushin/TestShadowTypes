@@ -24,6 +24,7 @@ import boa.compiler.visitors.AbstractVisitor;
 import boa.compiler.visitors.AbstractVisitorNoArg;
 import boa.compiler.visitors.AbstractVisitorNoReturn;
 
+import boa.compiler.ast.Node;
 /**
  * 
  * @author rdyer
@@ -91,6 +92,16 @@ public class SwitchCase extends Statement {
 	@Override
 	public void accept(final AbstractVisitorNoArg v) {
 		v.visit(this);
+	}
+
+	@Override
+	public void replaceExpression(final Expression oldExp, final Expression newExp) {
+		for (int i = 0; i < cases.size(); i++) {
+			if (oldExp == cases.get(i)) {
+				newExp.setParent(this);
+				cases.set(i, newExp);
+			}
+		}
 	}
 
 	public SwitchCase clone() {

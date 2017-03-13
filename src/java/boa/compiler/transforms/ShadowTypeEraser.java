@@ -19,10 +19,6 @@ package boa.compiler.transforms;
 
 import java.util.*;
 
-import boa.compiler.visitors.AbstractVisitorNoArg;
-
-import boa.compiler.SymbolTable;
-
 import boa.compiler.ast.Factor;
 import boa.compiler.ast.Selector;
 import boa.compiler.ast.Term;
@@ -32,13 +28,16 @@ import boa.compiler.ast.Identifier;
 import boa.compiler.ast.Conjunction;
 import boa.compiler.ast.Call;
 import boa.compiler.ast.expressions.*;
-
 import boa.compiler.ast.statements.VarDeclStatement;
 import boa.compiler.ast.statements.Statement;
-
+import boa.compiler.ast.statements.VisitStatement;
+import boa.compiler.ast.expressions.VisitorExpression;
+import boa.compiler.SymbolTable;
+import boa.compiler.visitors.AbstractVisitorNoArg;
 import boa.types.BoaShadowType;
-import boa.types.proto.StatementProtoTuple;
 import boa.types.BoaTuple;
+import boa.types.proto.StatementProtoTuple;
+
 /**
  * Converts a tree using shadow types into a tree without shadow types.
  *
@@ -46,103 +45,121 @@ import boa.types.BoaTuple;
  * @author kaushin
  */
 public class ShadowTypeEraser extends AbstractVisitorNoArg {
-
-	
-	private SymbolTable env;
 	private LinkedList<Expression> expressionStack = new LinkedList<Expression>();
+	private LinkedList<VisitStatement> visitStack = new LinkedList<VisitStatement>();
+	private LinkedList<VisitStatement> shadowVisitStack = new LinkedList<VisitStatement>();
+	private LinkedList<VisitorExpression> visitorExpStack = new LinkedList<VisitorExpression>();
+	private boolean flag = false;
+	private List<Node> ops = null;
 
-	// Class to help walkthrough replacement sub-trees to make nessasary changes
-	private class Replace extends AbstractVisitorNoArg{
-		
-		protected String CallingVariableName ;
-	
-		protected void initialize() { 
-		}
-
-		public void start(final Node n, String CallingVariableName) {
-			initialize();
-			this.CallingVariableName = CallingVariableName;
-			n.accept(this);
-		}
-
-		public void visit(final Identifier n) {
-			super.visit(n);
-		
-			System.out.println("---->"+n.getToken() + " string: " + CallingVariableName);
-			if(n.getToken().equals("${0}")){
-				System.out.println("----->"+n.getToken() + " string: " + CallingVariableName);
-				n.setToken(CallingVariableName);		
-			}	
-		}
-	}
-
-	// Populating Stack of expressions for later use
+	// track nearest Expression node
+	@Override
 	public void visit(final Expression n) {
 		expressionStack.push(n);
 		super.visit(n);
 		expressionStack.pop();
 	}
 
-	// Replacing selector trees of shadow types all teh way upto its expression node
+
+	@Override
+	public void visit(final Factor n) {
+		flag = false;
+		ops = n.getOps();
+		super.visit(n);
+	}
+	@Override
+	public void visit(final VisitStatement n) {
+		visitStack.push(n);
+		super.visit(n);
+		visitStack.pop();
+	}
+	@Override
+	public void visit(final VisitorExpression n) {
+		visitorExpStack.push(n);
+		super.visit(n);
+		visitorExpStack.pop();
+		if(!shadowVisitStack.isEmpty()){
+			n.replaceVisit(shadowVisitStack);
+		}
+		//add the switch case with all the shadow type items back into the block child of the visitor expression
+	}
+
+	// replacing shadow type selectors
 	@Override
 	public void visit(final Selector n) {
 		super.visit(n);
 
-		env = n.env;
-		Factor test =  (Factor)n.getParent();
-		if ( test.getOperand().type instanceof BoaShadowType){
-			//get parent Expression 
-			Expression parentExp = expressionStack.peek();
-				
-			
-			// Getting Shadow type used
-			Identifier id = (Identifier)test.getOperand();
-			System.out.println(id.getToken());
-			BoaShadowType typeUsed = (BoaShadowType)env.get(id.getToken());	
-			Expression replacement = (Expression)typeUsed.lookupCodegen(n.getId().getToken()).clone();
+		final Factor fact = (Factor)n.getParent();
 
-			//working through to all identifiers to replace required identitiers!!
-			Replace rep = new Replace();
-			rep.start(replacement,id.getToken());
+		if (!flag && fact.getOperand().type instanceof BoaShadowType) {
+			// avoid replacing past the first selector
+			flag = true;
+			final Expression parentExp = expressionStack.peek();
 
-			//use replaceStatement or the like of expression node
-			parentExp.replaceExpression(parentExp,replacement);
+			// get shadow type used
+			final Identifier id = (Identifier)fact.getOperand();
+			final BoaShadowType shadow = (BoaShadowType)fact.getOperand().type;
+
+			// replace the selector
+			final Expression replacement = (Expression)shadow.lookupCodegen(n.getId().getToken(), id.getToken(), parentExp.env);
+			final ParenExpression paren = new ParenExpression(replacement);
+			final Factor newFact = new Factor(paren);
+			final Expression newExp = ASTFactory.createFactorExpr(newFact);
+
+			if (ops != null)
+				for (int i = 1; i < ops.size(); i++)
+					newFact.addOp(ops.get(i));
+
+			newFact.env = parentExp.env;
+			paren.type = replacement.type;
+			newExp.type = paren.type;
+
+			parentExp.replaceExpression(parentExp, newExp);
 		}
 	}
 
-	// Changing type of variable used in before or after statement to type Statement
-	
+	// removing shadow types in before/after visit
 	@Override
 	public void visit(final Component n) {
 		super.visit(n);
-		if(n.type instanceof BoaShadowType){
-			//Change the Identifier in the ast
-			BoaShadowType typeUsed = (BoaShadowType)env.get(n.getType().toString());
-			Identifier temp = (Identifier)n.getType();
-			System.out.println("Shadow Type Before/After Found = "+ temp.getToken());
-			temp.setToken(typeUsed.getDeclarationIdentifierEraser);		
+
+		if (n.type instanceof BoaShadowType) {
+			//get parent visit statement
+			VisitStatement parentVisit = visitStack.peek(); 
+			shadowVisitStack.push(parentVisit);
+			//use a replace method to get rid of the visitStatement node in the VisitorExp block child
+			// visitorExpStack.peek().replaceVisit(parentVisit); 
+
+
+			final BoaShadowType shadow = (BoaShadowType)n.type;
+
+			// change the identifier
+			final Identifier id = (Identifier)n.getType();
+			id.setToken(shadow.getDeclarationIdentifierEraser);
+
+			// update types
+			n.type = n.getType().type = shadow.getDeclarationSymbolTableEraser;
+			n.env.set(n.getIdentifier().getToken(), n.type);
 		}
 	}
-	// Changing type of variable used in before or after statement to type Statement
+
+	// removing shadow types in variable declarations
 	@Override
 	public void visit(final VarDeclStatement n) {
 		super.visit(n);
-		//get Symbol Table
-		env = n.env;
-		if (n.hasType()){
-			if(n.type instanceof BoaShadowType){
 
-				//Change the Identifier in the ast
-				BoaShadowType typeUsed = (BoaShadowType)env.get(n.getType().toString());
-				Identifier temp = (Identifier)n.getType();
-				System.out.println("Shadow Type Declaration Found = "+ temp.getToken());
-				temp.setToken(typeUsed.getDeclarationIdentifierEraser);
-				
-				
-				//Change the Type in the SymbolTable
-				env.setType(n.getId().getToken(),typeUsed.getDeclarationSymbolTableEraser);
-				n.type = typeUsed.getDeclarationSymbolTableEraser;
+		if (n.hasType()) {
+			if (n.type instanceof BoaShadowType) {
+				final BoaShadowType shadow = (BoaShadowType)n.env.get(n.getType().toString());
+
+				// change the identifier
+				final Identifier id = (Identifier)n.getType();
+				id.setToken(shadow.getDeclarationIdentifierEraser);
+
+				// update types
+				n.type = shadow.getDeclarationSymbolTableEraser;
+				n.env.setType(n.getId().getToken(), shadow.getDeclarationSymbolTableEraser);
 			}
-		}	
+		}
 	}
 }

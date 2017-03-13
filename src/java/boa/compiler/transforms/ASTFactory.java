@@ -50,17 +50,7 @@ public class ASTFactory {
 	public static VarDeclStatement createVarDecl(final String name, final Operand init, final BoaType t, final SymbolTable env) {
 		final VarDeclStatement var = new VarDeclStatement(
 				new Identifier(name),
-				new Expression(
-					new Conjunction(
-						new Comparison(
-							new SimpleExpr(
-								new Term(
-									new Factor(init)
-								)
-							)
-						)
-					)
-				)
+				ASTFactory.createFactorExpr(init)
 			);
 		var.type = var.getInitializer().type = t;
 		var.env = env;
@@ -77,20 +67,12 @@ public class ASTFactory {
 		final Factor f = new Factor(ASTFactory.createIdentifier(name, env));
 		f.env = env;
 
-		final Expression exp = new Expression(
-			new Conjunction(
-				new Comparison(
-					new SimpleExpr(
-						new Term(f)
-					)
-				)
-			)
-		);
+		final Expression exp = ASTFactory.createFactorExpr(f);
 		exp.type = t;
 		return exp;
 	}
 
-	public static ExprStatement createCall(final String name, final SymbolTable env, final BoaType retType, final Expression... args) {
+	public static Expression createCallExpr(final String name, final SymbolTable env, final BoaType retType, final Expression... args) {
 		final Expression exp = ASTFactory.createIdentifierExpr(name, env, retType);
 
 		final Call c = new Call();
@@ -100,17 +82,23 @@ public class ASTFactory {
 
 		exp.getLhs().getLhs().getLhs().getLhs().getLhs().addOp(c);
 
-		return new ExprStatement(exp);
+		return exp;
+	}
+
+	public static ExprStatement createCall(final String name, final SymbolTable env, final BoaType retType, final Expression... args) {
+		return new ExprStatement(ASTFactory.createCallExpr(name, env, retType, args));
 	}
 
 	public static Expression createFactorExpr(final Operand op) {
+		return ASTFactory.createFactorExpr(new Factor(op));
+	}
+
+	public static Expression createFactorExpr(final Factor f) {
 		return new Expression(
 			new Conjunction(
 				new Comparison(
 					new SimpleExpr(
-						new Term(
-							new Factor(op)
-						)
+						new Term(f)
 					)
 				)
 			)

@@ -16,13 +16,15 @@
  */
 package boa.compiler.ast.expressions;
 
+import java.util.*;
+
 import boa.compiler.ast.Operand;
 import boa.compiler.ast.statements.Block;
 import boa.compiler.ast.types.VisitorType;
 import boa.compiler.visitors.AbstractVisitor;
 import boa.compiler.visitors.AbstractVisitorNoArg;
 import boa.compiler.visitors.AbstractVisitorNoReturn;
-
+import boa.compiler.ast.statements.VisitStatement;
 /**
  * 
  * @author rdyer
@@ -60,6 +62,14 @@ public class VisitorExpression extends Operand {
 	public <A> void accept(final AbstractVisitorNoReturn<A> v, A arg) {
 		v.visit(this, arg);
 	}
+
+	
+	public void replaceVisit(LinkedList<VisitStatement> oldVisit){
+		for(VisitStatement vs : oldVisit){
+			body.replaceVisit(vs);
+		}
+	}
+
 
 	/** {@inheritDoc} */
 	@Override

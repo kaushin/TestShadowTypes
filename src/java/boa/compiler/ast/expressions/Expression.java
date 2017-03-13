@@ -88,9 +88,6 @@ public class Expression extends Node {
 		v.visit(this);
 	}
 
-	public void replaceExpression(final Node oldExp,final Node newExp) {
-		parent.replaceExpression(oldExp, newExp);
-	}
 
 	public Expression clone() {
 		final Expression e = new Expression(lhs.clone());
