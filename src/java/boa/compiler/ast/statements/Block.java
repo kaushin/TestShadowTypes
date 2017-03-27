@@ -120,6 +120,8 @@ public class Block extends Statement {
 		}
 	}
 
+
+
 	public Block clone() {
 		final Block b = new Block();
 		for (final Statement s : statements)
