@@ -33,11 +33,15 @@ import boa.compiler.ast.statements.Statement;
 import boa.compiler.ast.statements.VisitStatement;
 import boa.compiler.ast.expressions.VisitorExpression;
 import boa.compiler.ast.statements.Block;
+import boa.compiler.ast.statements.SwitchStatement;
 import boa.compiler.SymbolTable;
 import boa.compiler.visitors.AbstractVisitorNoArg;
 import boa.types.BoaShadowType;
 import boa.types.BoaTuple;
 import boa.types.proto.StatementProtoTuple;
+import boa.types.proto.enums.StatementKindProtoMap;
+
+import boa.compiler.transforms.ASTFactory;
 
 /**
  * Converts a tree using shadow types into a tree without shadow types.
@@ -74,6 +78,9 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
 		private LinkedList<VisitStatement> visitStack = new LinkedList<VisitStatement>();
 		private LinkedList<VisitStatement> shadowVisitStack = new LinkedList<VisitStatement>();
 		private LinkedList<VisitorExpression> visitorExpStack = new LinkedList<VisitorExpression>();
+		private HashMap<VisitStatement,String> shadowedMap = new HashMap<VisitStatement,String>();
+        private VisitStatement statementShadowedVisit;
+		private boolean shadowedTypePresent = false;
 
 		@Override
 		public void visit(final VisitStatement n) {
@@ -92,10 +99,56 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
 				n.replaceVisit(shadowVisitStack);
 			}
 
-
-			//TODO : Convert all items in shadowVisitStack into relevent swtich case block and add them to a Block object 
-
 			Block afterTransformation = new Block();
+			
+            //Creating Switch statement
+            Factor f = new Factor(ASTFactory.createIdentifier("name", n.env));
+                Selector selec = new Selector(ASTFactory.createIdentifier("kind", n.env));
+                f.addOp(selec);
+                f.env = n.env;
+                Expression exp = ASTFactory.createFactorExpr(f);
+                exp.type = new StatementKindProtoMap();
+
+                SwitchStatement switchS = new SwitchStatement(exp);
+
+
+            //TODO : Create a Visit Statement of the shadowed type and attach the block to it
+            if(shadowedMap.containsValue("Statement") && !shadowedTypePresent ){
+                VisitStatement shadowedTypeVisit = new VisitStatement(false, new Component( ASTFactory.createIdentifier("Statement", n.env), ASTFactory.createIdentifier("Statement", n.env)), afterTransformation);
+                shadowedTypeVisit.type =  new StatementProtoTuple();
+                shadowedTypeVisit.env = n.env;
+                n.getBody().addStatement(shadowedTypeVisit);
+
+                //TODO : Convert all items in shadowVisitStack into relevent swtich case block and add them to a Block object of required type
+                 for(VisitStatement visit : shadowVisitStack){
+                    //TODO : transform
+                    //TODO : For each shadowded type create  a visit statement
+                    afterTransformation.addStatement(visit);
+                   
+                    //ADD transformed to the switch object
+                    //switchS.addCase()
+
+                }
+
+
+
+            }else if(shadowedMap.containsValue("Statement") && shadowedTypePresent) {
+               
+                Block b = statementShadowedVisit.getBody();
+                 //TODO : Convert all items in shadowVisitStack into relevent swtich case block and add them to a Block object of required type
+                for(VisitStatement visit : shadowVisitStack){
+                     //TODO : transform
+                    //TODO : For each shadowded type create  a visit statement
+                   
+                    //b.addStatement(visit);
+                 
+                 }
+            }
+
+			
+
+			
+			
 		/* This is the block thats needs to be generated (if there was only 1 shadow type)
 
 			VisitStatement
@@ -127,12 +180,8 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
 
 			//afterTransformation.addStatement();
 
-			//TODO : Create a Visit Statement of the shadowed type and attach the block to it
-
-
-			VisitStatement shadowedTypeVisit = new VisitStatement(false, new Component( new Identifier("Statement"), new Identifier("Statement")), afterTransformation);
-			//n.getBody().addStatement(shadowedTypeVisit);
-			
+			shadowVisitStack = new LinkedList<VisitStatement>();
+			shadowedTypePresent = false;
 		}
 
 
@@ -140,11 +189,19 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
 		public void visit(final Component n) {
 			super.visit(n);
 			// TODO : add field to strack presence of shadowed type (eg. Statement)
+			
+			if(n.type.toString().equals("Statement")){// will need to extend to multiple types apart from Statement
+				shadowedTypePresent = true;
+                statementShadowedVisit =  visitStack.peek();
+			}
 
 			if (n.type instanceof BoaShadowType) {
 				//get parent visit statement
 				VisitStatement parentVisit = visitStack.peek(); 
 				shadowVisitStack.push(parentVisit);
+
+				final BoaShadowType shadow = (BoaShadowType)n.type;
+				shadowedMap.put(parentVisit,shadow.shadowedName());
 			}
 		}
 
