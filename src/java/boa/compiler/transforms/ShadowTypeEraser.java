@@ -79,7 +79,7 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
 		private LinkedList<VisitStatement> shadowVisitStack = new LinkedList<VisitStatement>();
 		private LinkedList<VisitorExpression> visitorExpStack = new LinkedList<VisitorExpression>();
 		private HashMap<VisitStatement,String> shadowedMap = new HashMap<VisitStatement,String>();
-        private VisitStatement statementShadowedVisit;
+        private HashMap<VisitStatement,String> statementShadowedVisit = new HashMap<VisitStatement,String>();
 		private boolean shadowedTypePresent = false;
 
 		@Override
@@ -101,8 +101,14 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
 
 			Block afterTransformation = new Block();
 			
-            //Creating Switch statement
-            Factor f = new Factor(ASTFactory.createIdentifier("name", n.env));
+            
+
+
+            //TODO : Create a Visit Statement of the shadowed type and attach the block to it
+            if(shadowedMap.containsValue("Statement") && !shadowedTypePresent ){
+                //Creating Switch statement
+                Factor f = new Factor(ASTFactory.createIdentifier("name", n.env));
+                
                 Selector selec = new Selector(ASTFactory.createIdentifier("kind", n.env));
                 f.addOp(selec);
                 f.env = n.env;
@@ -111,30 +117,45 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
 
                 SwitchStatement switchS = new SwitchStatement(exp);
 
-
-            //TODO : Create a Visit Statement of the shadowed type and attach the block to it
-            if(shadowedMap.containsValue("Statement") && !shadowedTypePresent ){
-                VisitStatement shadowedTypeVisit = new VisitStatement(false, new Component( ASTFactory.createIdentifier("Statement", n.env), ASTFactory.createIdentifier("Statement", n.env)), afterTransformation);
+                afterTransformation.addStatement(switchS);
+                //creating new shadowed visit
+                VisitStatement shadowedTypeVisit = new VisitStatement(false, new Component( ASTFactory.createIdentifier("node", n.env), ASTFactory.createIdentifier("Statement", n.env)), afterTransformation);
                 shadowedTypeVisit.type =  new StatementProtoTuple();
                 shadowedTypeVisit.env = n.env;
                 n.getBody().addStatement(shadowedTypeVisit);
+
+                
+
 
                 //TODO : Convert all items in shadowVisitStack into relevent swtich case block and add them to a Block object of required type
                  for(VisitStatement visit : shadowVisitStack){
                     //TODO : transform
                     //TODO : For each shadowded type create  a visit statement
-                    afterTransformation.addStatement(visit);
+                    
                    
                     //ADD transformed to the switch object
                     //switchS.addCase()
 
                 }
-
-
-
             }else if(shadowedMap.containsValue("Statement") && shadowedTypePresent) {
+                //TODO : need to add check to see if swtich already exists
+                //creating switch statement
+                Factor f = new Factor(ASTFactory.createIdentifier(statementShadowedVisit.values().toArray(new String[0])[0], n.env));
                
-                Block b = statementShadowedVisit.getBody();
+                Selector selec = new Selector(ASTFactory.createIdentifier("kind", n.env));
+                f.addOp(selec);
+                f.env = n.env;
+                Expression exp = ASTFactory.createFactorExpr(f);
+                exp.type = new StatementKindProtoMap();
+
+                SwitchStatement switchS = new SwitchStatement(exp);                
+
+                //need to add to the body of already existing Statement visit
+                Block b = statementShadowedVisit.keySet().toArray(new VisitStatement[0])[0].getBody();
+
+                
+                // b.addStatement(swtichS);
+
                  //TODO : Convert all items in shadowVisitStack into relevent swtich case block and add them to a Block object of required type
                 for(VisitStatement visit : shadowVisitStack){
                      //TODO : transform
@@ -178,8 +199,7 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
 		                                                Identifier
 			*/
 
-			//afterTransformation.addStatement();
-
+			
 			shadowVisitStack = new LinkedList<VisitStatement>();
 			shadowedTypePresent = false;
 		}
@@ -192,7 +212,8 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
 			
 			if(n.type.toString().equals("Statement")){// will need to extend to multiple types apart from Statement
 				shadowedTypePresent = true;
-                statementShadowedVisit =  visitStack.peek();
+                statementShadowedVisit.put(visitStack.peek(),n.getIdentifier().getToken());
+
 			}
 
 			if (n.type instanceof BoaShadowType) {
