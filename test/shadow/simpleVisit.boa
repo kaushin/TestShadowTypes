@@ -1,0 +1,26 @@
+
+DEAD: output sum of int ;
+v : IfStatement;
+visit(input, visitor {
+	
+	before nod: IfStatement ->{
+       visit(nod.false_branch.statements[0]);
+       DEAD << 1 ;
+    }
+    #before node: ForStatement ->{
+  #     visit(node.body);
+    #   DEAD << 1 ;
+   # }
+    before noe: Statement ->
+    switch (noe.kind) {
+          case StatementKind.IF:
+             DEAD << 1 ;
+             break;
+          case StatementKind.FOR:
+             DEAD << 1 ;
+             break;
+          default:
+          break;
+      }
+    
+});
