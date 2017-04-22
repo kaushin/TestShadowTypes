@@ -63,14 +63,6 @@ public class VisitorExpression extends Operand {
 		v.visit(this, arg);
 	}
 
-	
-	public void replaceVisit(LinkedList<VisitStatement> oldVisit){
-		for(VisitStatement vs : oldVisit){
-			body.replaceVisit(vs);
-		}
-	}
-
-	
 
 	/** {@inheritDoc} */
 	@Override

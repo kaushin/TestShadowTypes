@@ -111,17 +111,6 @@ public class Block extends Statement {
 	}
 
 
-	public void replaceVisit(VisitStatement oldVisit){
-		int index = 999;
-		for(int i = 0; i< statements.size(); i++){
-			if(oldVisit == statements.get(i)){
-				statements.remove(i);
-			}
-		}
-	}
-
-
-
 	public Block clone() {
 		final Block b = new Block();
 		for (final Statement s : statements)
