@@ -87,7 +87,7 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
         private HashMap<BoaProtoTuple,LinkedList<VisitStatement>> beforeShadowedMap = new HashMap<BoaProtoTuple,LinkedList<VisitStatement>>();
         private HashMap<BoaProtoTuple,LinkedList<VisitStatement>> afterShadowedMap = new HashMap<BoaProtoTuple,LinkedList<VisitStatement>>();
         private HashMap<BoaProtoTuple,LinkedList<VisitStatement>> shadowedMap = new HashMap<BoaProtoTuple,LinkedList<VisitStatement>>();
-       
+        private Block wildcardBlock = null;
         private boolean shadowedTypePresent = false;
 
         public class VisitTransfrom  extends AbstractVisitorNoArg{
@@ -133,7 +133,11 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
         @Override
         public void visit(final VisitStatement n) {
             visitStack.push(n);
-            n.getComponent().accept(this);
+            if(n.hasComponent()){
+                n.getComponent().accept(this);
+            }else{
+                wildcardBlock = n.getBody();
+            }
             visitStack.pop();
         }
 
@@ -185,16 +189,17 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
                     }
                 }
 
-                transformVisitor(n,beforeShadowedMap,true);
-                transformVisitor(n,afterShadowedMap,false);
+                transformVisitor(n,beforeShadowedMap,true,wildcardBlock);
+                transformVisitor(n,afterShadowedMap,false,wildcardBlock);
 
             }
             // just clearing out variables
             shadowVisitStack = new LinkedList<VisitStatement>();
             shadowedTypePresent = false;
+            wildcardBlock = null;
         }
 
-        public void transformVisitor (VisitorExpression n, HashMap<BoaProtoTuple,LinkedList<VisitStatement>> shadowedMap,boolean beforeBool){
+        public void transformVisitor (VisitorExpression n, HashMap<BoaProtoTuple,LinkedList<VisitStatement>> shadowedMap,boolean beforeBool,Block wildcardBlock){
                             //TODO : Create a Visit Statement of the shadowed type and attach the block to it
                 for (Map.Entry<BoaProtoTuple, LinkedList<VisitStatement>> entry : shadowedMap.entrySet()) {
                     Block afterTransformation = new Block();
@@ -235,6 +240,7 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
                             LinkedList<Expression> listExp = new LinkedList<Expression>();
                             listExp.add(((BoaShadowType)visit.getComponent().type).getKindExpression(n.env));
                             sc = new SwitchCase(false,b,listExp);
+                            sc.getBody().getStatements().add(new BreakStatement());
                             switchS.addCase(sc);
                         }
 
@@ -242,10 +248,15 @@ public class ShadowTypeEraser extends AbstractVisitorNoArg {
                         new VisitTransfrom().start(visit, visit.getComponent().getIdentifier().getToken(),"node");
                     }
 
-                    if(defaultSc.getBody().getStatements().size() == 0){
+                   
+                    if( wildcardBlock != null){
+                        // trying to add wildcard to default
+                        defaultSc.getBody().getStatements().addAll(wildcardBlock.getStatements());
+                    }
+                    if(defaultSc.getBody().getStatementsSize() == 0 ){
                         // Setting Default to a break statement if no default is present
                         defaultSc.getBody().getStatements().add(new BreakStatement());
-                    }
+                    } 
 
                     afterTransformation.addStatement(switchS);
 
